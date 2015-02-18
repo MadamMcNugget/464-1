@@ -1,6 +1,16 @@
+//*********************************
+//
+//  CMPT 464
+//  Assignment 1 - SMF Reader
+//  
+//  Hazel (Hei Man) Yip
+//  301175142
+//  
+//*********************************
+
+
 /** INCLUDE LIBRARIES **/
 #include <GL/glui.h>
-
 
 /** CALLBACK ID'S **/
 #define OPTION_FLAT     100
@@ -66,7 +76,7 @@ float testCube[108] = {-1.0f,-1.0f,-1.0f, // triangle 1 : begin (x,y,z)
 
 /** POINTERS TO GLUI CONTROLS AND SUBWINDOWS **/
 GLUI            *right_sub;
-GLUI_Panel      *file_panel, *options_panel, *translation_panel, *rotation_panel;
+GLUI_Panel      *file_panel, *options_panel, *transformation_panel, *translation_panel, *rotation_panel;
 GLUI_Button     *bn_load, *bn_save, *bn_quit;
 GLUI_EditText   *load_path, *save_path;
 GLUI_Listbox    *lst_display_options;
@@ -82,7 +92,7 @@ void renderWire(void) {
     glTranslatef( 0.0, 0.0, -5.5f );
     
     // Translation, scale and rotation are bound to GLUI live variables
-    glTranslatef(obj_pos[0], obj_pos[1], obj_pos[2]);
+    glTranslatef(obj_pos[0], obj_pos[1], -obj_pos[2]);
     glScalef(scale,scale,scale);
     glMultMatrixf(rotation_array);
 
@@ -184,37 +194,29 @@ int main(int argc, char **argv) {
                 lst_display_options->add_item(OPTION_WIRE,"Wireframe");
                 lst_display_options->add_item(OPTION_COMBO,"Shaded with mesh edges");
 
+        // TRANSFORMATION PANEL
+        transformation_panel = new GLUI_Panel(right_sub,"Tranformation", GLUI_PANEL_EMBOSSED);
 
+        // TRANSLATION PANEL
+        translation_panel = new GLUI_Panel(transformation_panel,"", GLUI_PANEL_EMBOSSED);
+            /*t_x = new GLUI_Translation(translation_panel,"Translation X",GLUI_TRANSLATION_X,obj_pos);
+                t_x->set_speed( .005 );
+            new GLUI_Column(translation_panel,false);
+            t_y = new GLUI_Translation(translation_panel,"Translation Y",GLUI_TRANSLATION_Y,&obj_pos[1]);
+                t_y->set_speed( .005 );*/
+            t_xy = new GLUI_Translation(translation_panel,"Translation XY",GLUI_TRANSLATION_XY,obj_pos);
+                t_xy->set_speed( .005 );
+            new GLUI_Column(translation_panel,false);
+            t_z = new GLUI_Translation(translation_panel,"Tranlation Z",GLUI_TRANSLATION_Z,&obj_pos[2]);
+                t_z->set_speed( .005 );
 
-
-    // CREATE A SUBWINDOW ON THE BOTTOM FOR MY NAVIGATION CONTROLS
-    // *translation_panel, *rotation_panel
-    //bottom_sub = GLUI_Master.create_glui_subwindow(main_window,GLUI_SUBWINDOW_BOTTOM);
-
-        // MODEL ROTATION BUTTON
-        rotation_panel = new GLUI_Panel(right_sub,"Rotation & Zoom", GLUI_PANEL_EMBOSSED);
+        // ROTATION PANEL
+        rotation_panel = new GLUI_Panel(transformation_panel,"", GLUI_PANEL_EMBOSSED);
             ctrl_rotate = new GLUI_Rotation(rotation_panel,"Rotation", rotation_array);
             // ZOOM BUTTON
-            new GLUI_Column(rotation_panel,false);
-            zoom = new GLUI_Translation(rotation_panel,"Zoom",GLUI_TRANSLATION_Z);
-        // XY TRANSLATION BUTTON
-        translation_panel = new GLUI_Panel(right_sub,"Translation", GLUI_PANEL_EMBOSSED);
-            //new GLUI_Column(bottom_sub,false);
-            t_x = new GLUI_Translation(translation_panel,"Translation X",GLUI_TRANSLATION_X);
-
-            new GLUI_Column(translation_panel,false);
-            t_y = new GLUI_Translation(translation_panel,"Translation Y",GLUI_TRANSLATION_Y);
-            t_xy = new GLUI_Translation(translation_panel,"Translation XY",GLUI_TRANSLATION_XY);
-            //X TRANSLATION BUTTON
-            
-            //Y TRANSLATION BUTTON
-            //new GLUI_Column(bottom_sub,false);
-          
-
-            //Z TRANSLATION BUTTON
-            new GLUI_Column(translation_panel,false);
-            t_z = new GLUI_Translation(translation_panel,"Translation Z",GLUI_TRANSLATION_Z);
-
+            /*new GLUI_Column(rotation_panel,false);
+            zoom = new GLUI_Translation(rotation_panel,"Zoom",GLUI_TRANSLATION_Z,&obj_pos[2]);
+                zoom->set_speed( .005 );*/
             
 
         //MAKE SURE THIS GLUI SUBWINDOWS KNOWS THE NAME OF THE MAIN GLUT WINDOW
