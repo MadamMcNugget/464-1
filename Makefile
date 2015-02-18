@@ -18,7 +18,7 @@ LIBDIR=lib
 GLUI_LIB=lib
 
 # If you have more source files add them here 
-SOURCE= mymain.cpp
+SOURCE= mymain.cpp SMFParser.cpp
 
 # The compiler we are using 
 CC= g++

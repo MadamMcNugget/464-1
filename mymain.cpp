@@ -9,8 +9,22 @@
 //*********************************
 
 
+/* ***************************
+
+    GIT COMMANDS
+
+    git add -A
+    git commit -m "message"
+    git push -u origin master
+
+******************************/
+
+
 /** INCLUDE LIBRARIES **/
 #include <GL/glui.h>
+#include <iostream>
+#include <stdlib.h> 
+#include <string.h>   
 
 /** CALLBACK ID'S **/
 #define OPTION_FLAT     100
@@ -19,6 +33,11 @@
 #define OPTION_COMBO    103
 #define LOAD_FILE       104
 #define SAVE_FILE       105
+
+char strOpenFile[1024] = "smf/sphere.smf";
+char strSaveFile[1024] = "smf/sphere.smf";
+
+SMFParser g_Parser;
 
 using namespace::std;
 
@@ -158,6 +177,35 @@ void myGlutReshape(int x, int y) {
 
 /** GLUI Control Callback          ***/
 void control_cb(int controlID) {
+
+    //char filePathName[1024] = {0};
+
+    if (controlID == LOAD_FILE)
+    {
+        //printf("\n\n#########################\n\nPlease Enter Your Mesh File Path Name:\n");
+        //scanf("%s", filePathName);
+
+        cout<<"opening "<<load_path->get_text()<<".\n";
+
+        /*if (!g_Parser.Parser(strOpenFile))
+        {
+            printf("Parser SMF Files Failed!\n");
+            return;
+        }
+
+        initModelDisplay(g_Parser);*/
+        glutPostRedisplay();
+    }
+
+    else if (controlID == SAVE_FILE)
+    {
+        cout<<"save pressed.\n";
+    }
+}
+
+void textbox_cb_Open(GLUI_Control *control) {
+    //strcpy(strOpenFile, control->text.c_str());
+    //cout<<"file name changed: " << load_path->get_text();
 }
 
 /******** MY MAIN FUNCTION ******************************************/
@@ -179,7 +227,7 @@ int main(int argc, char **argv) {
 
         // A PANEL WITH MY FILE LOADING AND SAVING BUTTONS
         file_panel = new GLUI_Panel(right_sub,"File Menu", GLUI_PANEL_EMBOSSED);
-            load_path = new GLUI_EditText(file_panel,"Path:");
+            load_path = new GLUI_EditText(file_panel,"Path:"/*,text,1,textbox_cb_Open*/);
             load_path->set_w(200);
             bn_load = new GLUI_Button(file_panel,"Load",LOAD_FILE,control_cb);
             save_path = new GLUI_EditText(file_panel,"Path:");
