@@ -25,6 +25,9 @@
 #include <iostream>
 #include <stdlib.h> 
 #include <string.h>   
+#include "SMFParser.h"
+#include <math.h>
+#include <fstream>
 
 /** CALLBACK ID'S **/
 #define OPTION_FLAT     100
@@ -36,6 +39,9 @@
 
 char strOpenFile[1024] = "smf/sphere.smf";
 char strSaveFile[1024] = "smf/sphere.smf";
+
+GLuint g_uiDisplayID = 0;
+GLuint g_uiDisplayID1 = 0;
 
 SMFParser g_Parser;
 
@@ -52,6 +58,17 @@ float   obj_pos[] = {0.0,0.0,0.0};
 float   scale = 0.5;
 
 float xy_aspect; //Variable used in reshape function
+
+
+GLfloat light_ambient[] =  {0.1f, 0.1f, 0.3f, 1.0f};
+GLfloat light_diffuse[] =  {.9f, .6f, 0.0f, 1.0f};
+GLfloat light_position[] = {-1.0f, -1.0f, 1.0f, 0.0f};
+
+GLfloat lights_rotation[16] = {1, 0, 0, 0, 
+                               0, 1, 0, 0, 
+                               0, 0, 1, 0, 
+                               0, 0, 0, 1 };
+
 
 // The following array encodes the geometry of a simple 1x1x1 cube
 // Each row corresponds to a single vertex's (x,y,z) coordinates
@@ -108,7 +125,7 @@ void renderWire(void) {
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
     // Model initially offset slightly to the left, so it appears centered in viewport
-    glTranslatef( 0.0, 0.0, -5.5f );
+    glTranslatef( 0.0, 0.0, -2.5f );
     
     // Translation, scale and rotation are bound to GLUI live variables
     glTranslatef(obj_pos[0], obj_pos[1], -obj_pos[2]);
@@ -128,7 +145,7 @@ void renderWire(void) {
     Loop through vertices and draw each TRIANGLE */
 	for (int i=0; i<12; i++) {
         glBegin(GL_TRIANGLES);
-        glVertex3f(testCube[9*i],           //Vertex 1 coordinates
+        /*glVertex3f(testCube[9*i],           //Vertex 1 coordinates
                     testCube[9*i+1],
                     testCube[9*i+2]);
         glVertex3f(testCube[9*i+3],         //Vertex 2 coordinates
@@ -136,10 +153,125 @@ void renderWire(void) {
                     testCube[9*i+5]);
         glVertex3f(testCube[9*i+6],         //Vertex 3 coordinates
                    testCube[9*i+7],
-                   testCube[9*i+8]);
+                   testCube[9*i+8]);*/
         glEnd();
 	}
 
+}
+
+
+FVector3f GetNormalFromThreePosition(const FVector3f& v0, const FVector3f& v1, const FVector3f& v2)
+{
+    FVector3f res;
+    FVector3f ab = {
+        v1._x - v0._x,
+        v1._y - v0._y,
+        v1._z - v0._z
+    };
+    FVector3f ac = {
+        v2._x - v0._x,
+        v2._y - v0._y,
+        v2._z - v0._z
+    };
+
+    res._x = ab._y * ac._z - ab._z * ac._y;
+    res._y = ab._z * ac._x - ab._x * ac._z;
+    res._z = ab._x * ac._y - ab._y * ac._x;
+
+    return res;
+}
+
+FVector3f GetSmoothNormal(int vertexIdx, SMFParser& parser)
+{
+    FVector3f res = {0.f, 0.f, 0.f};
+
+    for (std::vector<FFace>::size_type i = 0; i < parser.GetFaceList().size(); ++i)
+    {
+        const FFace& face = parser.GetFaceList()[i];
+
+        if (vertexIdx == face._idx0 || vertexIdx == face._idx1 || vertexIdx == face._idx2)
+        {
+            const FVector3f& vertex0 = parser.GetVertexList()[face._idx0 - 1];
+            const FVector3f& vertex1 = parser.GetVertexList()[face._idx1 - 1];
+            const FVector3f& vertex2 = parser.GetVertexList()[face._idx2 - 1];
+            FVector3f normal = GetNormalFromThreePosition(vertex0, vertex1, vertex2);
+            float fSqure = normal._x * normal._x + normal._y * normal._y + normal._z * normal._z;
+            if (fSqure == 0.f)
+            {
+                fSqure = 1.f;
+            }
+
+            fSqure = 1.f / sqrt(fSqure);
+            normal._x *= fSqure;
+            normal._y *= fSqure;
+            normal._z *= fSqure;
+
+            res._x += normal._x;
+            res._y += normal._y;
+            res._z += normal._z;
+        }
+    }
+
+    return res;
+}
+
+void initModelDisplay(SMFParser& parser)
+{
+    if (g_uiDisplayID == 0)
+    {
+        g_uiDisplayID = glGenLists(1);
+    }
+
+    if (g_uiDisplayID1 == 0)
+    {
+        g_uiDisplayID1 = glGenLists(1);
+    }
+
+    if (g_uiDisplayID)
+    {
+        glNewList(g_uiDisplayID, GL_COMPILE);
+            glBegin(GL_TRIANGLES);
+            for (std::vector<FFace>::size_type i = 0; i < parser.GetFaceList().size(); ++i)
+            {
+                const FFace& face = parser.GetFaceList()[i];
+                const FVector3f& vertex0 = parser.GetVertexList()[face._idx0 - 1];
+                const FVector3f& vertex1 = parser.GetVertexList()[face._idx1 - 1];
+                const FVector3f& vertex2 = parser.GetVertexList()[face._idx2 - 1];
+                FVector3f normal = GetNormalFromThreePosition(vertex0, vertex1, vertex2);
+
+                glNormal3f(normal._x, normal._y, normal._z);
+                glVertex3f(vertex0._x, vertex0._y, vertex0._z);
+                glVertex3f(vertex1._x, vertex1._y, vertex1._z);
+                glVertex3f(vertex2._x, vertex2._y, vertex2._z);
+            }
+            glEnd();
+        glEndList();
+    }
+    
+    if (g_uiDisplayID1)
+    {
+        glNewList(g_uiDisplayID1, GL_COMPILE);
+        glBegin(GL_TRIANGLES);
+        for (std::vector<FFace>::size_type i = 0; i < parser.GetFaceList().size(); ++i)
+        {
+            const FFace& face = parser.GetFaceList()[i];
+            const FVector3f& vertex0 = parser.GetVertexList()[face._idx0 - 1];
+            const FVector3f& vertex1 = parser.GetVertexList()[face._idx1 - 1];
+            const FVector3f& vertex2 = parser.GetVertexList()[face._idx2 - 1];
+            FVector3f normal0 = GetSmoothNormal(face._idx0, parser);
+            FVector3f normal1 = GetSmoothNormal(face._idx1, parser);
+            FVector3f normal2 = GetSmoothNormal(face._idx2, parser);
+
+            glNormal3f(normal0._x, normal0._y, normal0._z);
+            glVertex3f(vertex0._x, vertex0._y, vertex0._z);
+            glNormal3f(normal1._x, normal1._y, normal1._z);
+            glVertex3f(vertex1._x, vertex1._y, vertex1._z);
+            glNormal3f(normal2._x, normal2._y, normal2._z);
+            glVertex3f(vertex2._x, vertex2._y, vertex2._z);
+        }
+        glEnd();
+        glEndList();
+    }
 }
 
 /** This function performs the actual rendering, and would invoke the rendering function according to desired shading model. In this example, only wireframe is rendered **/
@@ -157,7 +289,56 @@ void renderScene(void) {
 
     // IN THIS EXAMPLE WE ONLY HAVE A WIREFRAME RENDERING FUNCTION
     // IN YOUR ASSIGNMENT, YOU SHOULD INVOKE A RENDERING FUNCTION ACCORDING TO THE SHADING MODEL SELECTED BY THE USER
-    renderWire();
+    switch (disp_option)
+    {
+    case OPTION_FLAT:
+        renderWire();
+        glEnable(GL_LIGHTING);
+        glColor3f(1.f, 0.5f, 1.f);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        break;
+    case OPTION_WIRE:
+        renderWire();
+        glDisable(GL_LIGHTING);
+        glColor3f(1.f, 1.f, 1.f);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        break;
+    case OPTION_SMOOTH:
+        renderWire();
+        glEnable(GL_LIGHTING);
+        glColor3f(1.f, 0.5f, 1.f);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        break;
+    case OPTION_COMBO:
+        renderWire();
+        glEnable(GL_LIGHTING);
+        glColor3f(1.f, 0.5f, 1.f);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        break;
+    }
+
+    if (g_uiDisplayID > 0 && disp_option != OPTION_SMOOTH)
+    {
+        glCallList(g_uiDisplayID);
+
+        if (disp_option == 2)
+        {
+            glDisable(GL_LIGHTING);
+            glColor3f(1.f, 1.f, 1.f);
+            glEnable(GL_POLYGON_OFFSET_FILL);
+            glPolygonOffset(1.0f,0.0f);
+            glLineWidth(2.f);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glCallList(g_uiDisplayID);
+            glDisable(GL_POLYGON_OFFSET_FILL);
+        }
+    }
+
+    if (g_uiDisplayID1 > 0 && disp_option == OPTION_SMOOTH)
+    {
+        glCallList(g_uiDisplayID1);
+    }
+    
     glutSwapBuffers();
 
     glutPostRedisplay();
@@ -186,14 +367,15 @@ void control_cb(int controlID) {
         //scanf("%s", filePathName);
 
         cout<<"opening "<<load_path->get_text()<<".\n";
+        strcpy(strOpenFile, load_path->get_text());
 
-        /*if (!g_Parser.Parser(strOpenFile))
+        if (!g_Parser.Parser(strOpenFile))
         {
             printf("Parser SMF Files Failed!\n");
             return;
         }
 
-        initModelDisplay(g_Parser);*/
+        initModelDisplay(g_Parser);
         glutPostRedisplay();
     }
 
@@ -203,10 +385,6 @@ void control_cb(int controlID) {
     }
 }
 
-void textbox_cb_Open(GLUI_Control *control) {
-    //strcpy(strOpenFile, control->text.c_str());
-    //cout<<"file name changed: " << load_path->get_text();
-}
 
 /******** MY MAIN FUNCTION ******************************************/
 int main(int argc, char **argv) {
@@ -227,7 +405,7 @@ int main(int argc, char **argv) {
 
         // A PANEL WITH MY FILE LOADING AND SAVING BUTTONS
         file_panel = new GLUI_Panel(right_sub,"File Menu", GLUI_PANEL_EMBOSSED);
-            load_path = new GLUI_EditText(file_panel,"Path:"/*,text,1,textbox_cb_Open*/);
+            load_path = new GLUI_EditText(file_panel,"Path:");
             load_path->set_w(200);
             bn_load = new GLUI_Button(file_panel,"Load",LOAD_FILE,control_cb);
             save_path = new GLUI_EditText(file_panel,"Path:");
@@ -247,11 +425,6 @@ int main(int argc, char **argv) {
 
         // TRANSLATION PANEL
         translation_panel = new GLUI_Panel(transformation_panel,"", GLUI_PANEL_EMBOSSED);
-            /*t_x = new GLUI_Translation(translation_panel,"Translation X",GLUI_TRANSLATION_X,obj_pos);
-                t_x->set_speed( .005 );
-            new GLUI_Column(translation_panel,false);
-            t_y = new GLUI_Translation(translation_panel,"Translation Y",GLUI_TRANSLATION_Y,&obj_pos[1]);
-                t_y->set_speed( .005 );*/
             t_xy = new GLUI_Translation(translation_panel,"Translation XY",GLUI_TRANSLATION_XY,obj_pos);
                 t_xy->set_speed( .005 );
             new GLUI_Column(translation_panel,false);
@@ -261,19 +434,32 @@ int main(int argc, char **argv) {
         // ROTATION PANEL
         rotation_panel = new GLUI_Panel(transformation_panel,"", GLUI_PANEL_EMBOSSED);
             ctrl_rotate = new GLUI_Rotation(rotation_panel,"Rotation", rotation_array);
-            // ZOOM BUTTON
-            /*new GLUI_Column(rotation_panel,false);
-            zoom = new GLUI_Translation(rotation_panel,"Zoom",GLUI_TRANSLATION_Z,&obj_pos[2]);
-                zoom->set_speed( .005 );*/
-            
-
-        //MAKE SURE THIS GLUI SUBWINDOWS KNOWS THE NAME OF THE MAIN GLUT WINDOW
-        //bottom_sub->set_main_gfx_window(main_window);
 
 
         // MAKE SURE THIS GLUI SUBWINDOW KNOWS THE NAME OF MY MAIN GLUT WINDOW
         right_sub->set_main_gfx_window(main_window);
         bn_quit = new GLUI_Button(right_sub,"Quit",0,(GLUI_Update_CB)exit);
+
+    // Lighting
+    glClearColor(0.8f, 0.8f, 0.8f, 1.f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable( GL_NORMALIZE );
+
+    glEnable(GL_LIGHT0);
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+    glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+    // Init a model
+    if (!g_Parser.Parser("smf/sphere.smf"))
+    {
+        printf("Parser SMF Files Failed!\n");
+    }
+
+    initModelDisplay(g_Parser);
+
+    glutDisplayFunc(renderScene);
 
 	// enter GLUT event processing cycle
 	glutMainLoop();

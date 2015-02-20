@@ -3,6 +3,9 @@
 #include <fstream>
 using namespace std;
 
+	std::vector<FVector3f> m_VertexList;
+	std::vector<FFace> m_FaceList;
+
 SMFParser::SMFParser()
 {
 }
@@ -11,58 +14,6 @@ SMFParser::~SMFParser()
 {
 }
 
-bool SMFParser::Parser(const char* pFileName)
-{
-	m_VertexList.clear();
-	m_FaceList.clear();
-
-	fstream file(pFileName, ios::in);
-
-	if(!file.is_open())
-	{
-		return false;
-	}
-
-	char buf[1024] = {0};
-
-	while (file.getline(buf, 1024))
-	{
-		if (!ParserLine(buf))
-		{
-			return false;
-		}
-	}
-
-	printf("Parser SMF File: \"%s\" successed\n", pFileName);
-	return true;
-}
-
-bool SMFParser::ParserLine( const char* pLine )
-{
-	while (*pLine == ' ')
-	{
-		++pLine;
-	}
-
-	switch (*pLine)
-	{
-	case 'v':
-	case 'V':
-		return ParserVertex(pLine + 1);
-	case 'f':
-	case 'F':
-		return ParserFace(pLine + 1);
-	case '#':
-		// comment
-		//printf("Comment: %s\n", pLine);
-		return true;
-	default:
-		//printf("unkonw: %s\n", pLine);
-		return true;
-	}
-
-	return true;
-}
 
 bool SMFParser::ParserVertex( const char* pLine )
 {
@@ -155,3 +106,58 @@ bool SMFParser::ParserFace( const char* pLine )
 	return true;
 }
 
+
+
+bool SMFParser::ParserLine( const char* pLine )
+{
+	while (*pLine == ' ')
+	{
+		++pLine;
+	}
+
+	switch (*pLine)
+	{
+	case 'v':
+	case 'V':
+		return ParserVertex(pLine + 1);
+	case 'f':
+	case 'F':
+		return ParserFace(pLine + 1);
+	case '#':
+		// comment
+		//printf("Comment: %s\n", pLine);
+		return true;
+	default:
+		//printf("unkonw: %s\n", pLine);
+		return true;
+	}
+
+	return true;
+}
+
+
+bool SMFParser::Parser(const char* pFileName)
+{
+	m_VertexList.clear();
+	m_FaceList.clear();
+
+	fstream file(pFileName, ios::in);
+
+	if(!file.is_open())
+	{
+		return false;
+	}
+
+	char buf[1024] = {0};
+
+	while (file.getline(buf, 1024))
+	{
+		if (!ParserLine(buf))
+		{
+			return false;
+		}
+	}
+
+	//cout<<"Parser SMF File: "<<pFileName<<" successed\n");
+	return true;
+}
